@@ -203,7 +203,7 @@ public class JavaCodeParser {
     public List<PackageDetails> parsePackages() {
         List<PackageDetails> packages = new ArrayList<>();
         try {
-            Files.walk(Paths.get("src/main/java/com/org/javadoc/ai/generator")).filter(Files::isDirectory).forEach(path -> {
+            Files.walk(Paths.get("src/main/java/com/org/javadocgenerator")).filter(Files::isDirectory).forEach(path -> {
                 String packageName = path.toString().replace("src/main/java/", "").replace("/", ".");
                 packages.add(new PackageDetails(packageName, "Description of " + packageName));
             });
