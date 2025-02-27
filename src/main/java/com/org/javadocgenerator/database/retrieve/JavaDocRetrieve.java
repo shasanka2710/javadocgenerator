@@ -9,5 +9,5 @@ import java.util.List;
 public interface JavaDocRetrieve {
     List<Package> getPackages();
     List<JavaClass> getClasses(String packageName);
-    List<JavaMethod> getMethods(String packageName,String className);
+    JavaClass getClassDetails(String packageName,String className);
 }

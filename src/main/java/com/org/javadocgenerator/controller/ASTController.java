@@ -45,11 +45,9 @@ public class ASTController {
     @GetMapping("/package/{packageName}/class/{className}")
     public String getClassDetails(@PathVariable String packageName,
                                   @PathVariable String className, Model model) {
-        List<JavaMethod> methods = astControllerHelper.getMethods(packageName, className);
+        JavaClass javaClass = astControllerHelper.getClassDetails(packageName, className);
 
-        model.addAttribute("javaClass", className);
-        model.addAttribute("methods", methods);
-        model.addAttribute("packageName", packageName);
+        model.addAttribute("javaClass", javaClass);
         return "class-details"; // Loads the Thymeleaf template "class-details.html"
     }
 

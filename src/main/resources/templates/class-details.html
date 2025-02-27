@@ -9,40 +9,53 @@
 <body>
 <div layout:fragment="content">
     <div class="mb-4">
-        <h2 class="text-primary" th:text="${className}"></h2>
-        <p class="text-muted">Package: <span th:text="${packageName}"></span></p>
+        <h2 class="text-primary" th:text="${javaClass.className}"></h2>
+        <p class="text-muted">Package: <span th:text="${javaClass.packageName}"></span></p>
     </div>
 
     <!-- Fields Section -->
     <div>
         <h3>Fields</h3>
-        <div th:if="${fields == null or fields.isEmpty()}">
+        <div th:if="${javaClass.fields == null or javaClass.fields.isEmpty()}">
             <p class="text-muted">No fields available</p>
         </div>
-        <ul th:if="${fields != null and not #lists.isEmpty(fields)}">
-            <li th:each="field : ${fields}" th:text="${field}"></li>
+        <ul th:if="${javaClass.fields != null and not #lists.isEmpty(javaClass.fields)}">
+            <li th:each="field : ${javaClass.fields}">
+                <strong th:text="${field.visibility}"></strong>
+                <span th:text="${field.type}"></span>
+                <span th:text="${field.name}"></span>
+            </li>
         </ul>
     </div>
 
     <!-- Constructors Section -->
     <div>
         <h3>Constructors</h3>
-        <div th:if="${constructors == null or constructors.isEmpty()}">
+        <div th:if="${javaClass.constructors == null or javaClass.constructors.isEmpty()}">
             <p class="text-muted">No constructors available</p>
         </div>
-        <ul th:if="${constructors != null and not #lists.isEmpty(constructors)}">
-            <li th:each="constructor : ${constructors}" th:text="${constructor}"></li>
+        <ul th:if="${javaClass.constructors != null and not #lists.isEmpty(javaClass.constructors)}">
+            <li th:each="constructor : ${javaClass.constructors}">
+                <strong th:text="${constructor.visibility}"></strong>
+                <span th:text="${constructor.name}"></span>
+                (
+                <span th:each="parameter, iterStat : ${constructor.parameters}">
+                    <span th:text="${parameter.type} + ' ' + ${parameter.name}"></span>
+                    <span th:if="${!iterStat.last}">, </span>
+                </span>
+                )
+            </li>
         </ul>
     </div>
 
     <!-- Methods Section -->
     <div>
         <h3>Methods</h3>
-        <div th:if="${methods == null or methods.isEmpty()}">
+        <div th:if="${javaClass.methods == null or javaClass.methods.isEmpty()}">
             <p class="text-muted">No methods available</p>
         </div>
 
-        <div th:each="method : ${methods}" class="card">
+        <div th:each="method : ${javaClass.methods}" class="card">
             <div class="card-body">
                 <!-- Method Signature -->
                 <h5 class="card-title">
@@ -88,17 +101,6 @@
                         <p class="text-muted">No Javadoc available</p>
                     </div>
                     <pre class="javadoc-block" th:if="${method.javadoc}" th:text="${method.javadoc}"></pre>
-                </div>
-
-                <!-- Comments -->
-                <div>
-                    <h6>Comments</h6>
-                    <div th:if="${method.comments == null or method.comments.isEmpty()}">
-                        <p class="text-muted">No comments available</p>
-                    </div>
-                    <pre class="comment-block" th:if="${method.comments}">
-                        <span th:each="comment : ${method.comments}" th:text="${comment} + '\n'"></span>
-                    </pre>
                 </div>
 
                 <!-- Calls (Methods this method calls) -->

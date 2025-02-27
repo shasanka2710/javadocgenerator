@@ -71,9 +71,9 @@ public class MongoHandler implements JavaDocStorage, JavaDocRetrieve {
     }
 
     @Override
-    public List<JavaMethod> getMethods(String packageName, String className) {
+    public JavaClass getClassDetails(String packageName, String className) {
         JavaClass javaClass = classRepository.findByPackageNameAndClassName(packageName, className);
-        return javaClass != null ? javaClass.getMethods() : null;
+        return javaClass != null ? javaClass : null;
     }
 
 

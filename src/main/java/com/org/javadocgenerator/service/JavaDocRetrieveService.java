@@ -26,7 +26,7 @@ public class JavaDocRetrieveService {
         return retrieve.getClasses(packageName);
     }
 
-    public List<JavaMethod> getMethods(String packageName,String className) {
-        return retrieve.getMethods(packageName,className);
+    public JavaClass getClassDetails(String packageName,String className) {
+        return retrieve.getClassDetails(packageName,className);
     }
 }

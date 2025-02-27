@@ -32,7 +32,7 @@ public class ASTControllerHelper {
         return retrieveService.getClasses(packageName);
     }
 
-    public List<JavaMethod> getMethods( String packageName, String className) {
-       return retrieveService.getMethods(packageName,className);
+    public JavaClass getClassDetails( String packageName, String className) {
+       return retrieveService.getClassDetails(packageName,className);
     }
 }
