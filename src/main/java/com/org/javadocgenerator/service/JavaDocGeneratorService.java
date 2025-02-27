@@ -1,32 +1,61 @@
 package com.org.javadocgenerator.service;
 
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ClassLoaderTypeSolver;
 import com.org.javadocgenerator.database.mongo.model.*;
 import com.org.javadocgenerator.database.mongo.model.Package;
+import com.org.javadocgenerator.database.retrieve.JavaDocRetrieve;
 import com.org.javadocgenerator.database.storage.JavaDocStorage;
-import com.github.javaparser.JavaParser;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.comments.JavadocComment;
-import org.springframework.stereotype.Service;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import com.github.javaparser.resolution.SymbolResolver;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class JavaDocGeneratorService {
-
     private final JavaDocStorage storage;
-    private final Set<String> uniquePackages = new HashSet<>(); // To store unique package names
+    private final JavaDocRetrieve retrieve;
+    private final Set<String> uniquePackages = new HashSet<>();
+    private final Map<String, Set<String>> methodCallMap = new HashMap<>(); // Stores method calls
+    private final Map<String, Set<String>> incomingCallMap = new HashMap<>(); // Stores calledBy
+    private SymbolResolver symbolResolver;
 
-    public JavaDocGeneratorService(@Qualifier("mongoHandler") JavaDocStorage storage) {
+    public JavaDocGeneratorService(@Qualifier("mongoHandler") JavaDocStorage storage,@Qualifier("mongoHandler") JavaDocRetrieve retrieve) {
         this.storage = storage;
+        this.retrieve = retrieve;
+        this.symbolResolver = createSymbolSolver();
     }
 
+    /**
+     * Initializes JavaSymbolSolver for resolving method calls.
+     */
+    private SymbolResolver createSymbolSolver() {
+        CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
+        combinedTypeSolver.add(new ReflectionTypeSolver());
+        combinedTypeSolver.add(new JavaParserTypeSolver(new File("src/main/java")));
+        combinedTypeSolver.add(new ClassLoaderTypeSolver(Thread.currentThread().getContextClassLoader()));
+        return new JavaSymbolSolver(combinedTypeSolver);
+    }
+
+    /**
+     * Parses the project and stores class details into MongoDB.
+     */
     public void parseAndStoreProject(String projectId, String projectPath) throws Exception {
         Project project = new Project();
         project.setId(projectId);
@@ -39,7 +68,7 @@ public class JavaDocGeneratorService {
                 .filter(path -> path.toString().endsWith(".java"))
                 .forEach(file -> {
                     try {
-                        CompilationUnit cu = new JavaParser().parse(file).getResult().orElse(null);
+                        CompilationUnit cu = StaticJavaParser.parse(file);
                         if (cu != null) {
                             processCompilationUnit(projectId, cu);
                         }
@@ -48,13 +77,15 @@ public class JavaDocGeneratorService {
                     }
                 });
 
+        // Update calledBy relationships
+        updateCalledByRelationships();
+
         uniquePackages.clear(); // Clear cache after processing
     }
 
     private void processCompilationUnit(String projectId, CompilationUnit cu) {
         String packageName = cu.getPackageDeclaration().map(pd -> pd.getName().toString()).orElse("default");
 
-        // Save package only if it's not already stored
         if (uniquePackages.add(packageName)) {
             Package pkg = new Package();
             pkg.setProjectId(projectId);
@@ -63,6 +94,8 @@ public class JavaDocGeneratorService {
         }
 
         for (ClassOrInterfaceDeclaration classDecl : cu.findAll(ClassOrInterfaceDeclaration.class)) {
+            String className = classDecl.getFullyQualifiedName().orElse(packageName + "." + classDecl.getNameAsString());
+
             JavaClass javaClassDetails = new JavaClass();
             javaClassDetails.setProjectId(projectId);
             javaClassDetails.setPackageName(packageName);
@@ -73,33 +106,8 @@ public class JavaDocGeneratorService {
             javaClassDetails.setAnnotations(classDecl.getAnnotations().stream().map(a -> a.getNameAsString()).toList());
             javaClassDetails.setJavadoc(classDecl.getJavadocComment().map(Comment::getContent).orElse(null));
 
-            // Capture Fields
-            javaClassDetails.setFields(classDecl.getFields().stream().map(field -> {
-                JavaField javaField = new JavaField();
-                javaField.setName(field.getVariable(0).getNameAsString());
-                javaField.setType(field.getElementType().asString());
-                javaField.setVisibility(field.getAccessSpecifier().asString());
-                javaField.setStatic(field.isStatic());
-                javaField.setFinal(field.isFinal());
-                javaField.setAnnotations(field.getAnnotations().stream().map(a -> a.getNameAsString()).toList());
-                javaField.setJavadoc(field.getJavadocComment().map(JavadocComment::getContent).orElse(null));
-                return javaField;
-            }).toList());
-
-            // Capture Constructors
-            javaClassDetails.setConstructors(classDecl.getConstructors().stream().map(constructor -> {
-                JavaConstructor javaConstructor = new JavaConstructor();
-                javaConstructor.setName(constructor.getNameAsString());
-                javaConstructor.setVisibility(constructor.getAccessSpecifier().asString());
-                javaConstructor.setParameters(constructor.getParameters().stream()
-                        .map(param -> new JavaParameter(param.getNameAsString(), param.getType().asString()))
-                        .toList());
-                javaConstructor.setJavadoc(constructor.getJavadocComment().map(JavadocComment::getContent).orElse(null));
-                return javaConstructor;
-            }).toList());
-
-            // Capture Methods
             javaClassDetails.setMethods(classDecl.getMethods().stream().map(methodDecl -> {
+                String methodSignature = className + "." + methodDecl.getNameAsString();
                 JavaMethod javaMethod = new JavaMethod();
                 javaMethod.setMethodName(methodDecl.getNameAsString());
                 javaMethod.setReturnType(methodDecl.getType().asString());
@@ -113,15 +121,80 @@ public class JavaDocGeneratorService {
                         .map(throwExp -> throwExp.asString())
                         .toList());
                 javaMethod.setJavadoc(methodDecl.getJavadocComment().map(JavadocComment::getContent).orElse(""));
+
+                // Capture method calls
+                Set<String> calledMethods = captureMethodCalls(methodDecl);
+                javaMethod.setCalls(new ArrayList<>(calledMethods));
+
+                // Store method calls for reverse lookup
+                methodCallMap.put(methodSignature, calledMethods);
+
+                // Populate `calledBy` (reverse map)
+                for (String calledMethod : calledMethods) {
+                    incomingCallMap.computeIfAbsent(calledMethod, k -> new HashSet<>()).add(methodSignature);
+                }
+
                 return javaMethod;
             }).toList());
 
-            // Capture Static Blocks
-            //javaClassDetails.setStaticBlocks(classDecl.getStaticInitializer().map(staticBlock -> staticBlock.toString()).orElse(null));
-
-            // Save the complete class details
             storage.saveClass(javaClassDetails);
         }
     }
 
+    /**
+     * Captures method calls inside a given method.
+     */
+    private Set<String> captureMethodCalls(MethodDeclaration methodDecl) {
+        Set<String> calledMethods = new HashSet<>();
+
+        for (MethodCallExpr methodCall : methodDecl.findAll(MethodCallExpr.class)) {
+            //resolveFullyQualifiedMethodName(methodCall).ifPresent(calledMethods::add);
+            calledMethods.add(methodCall.getNameAsString());
+        }
+        return calledMethods;
+    }
+
+    /**
+     * Resolves the fully qualified method name for a method call.
+     */
+   /* private Optional<String> resolveFullyQualifiedMethodName(MethodCallExpr methodCall) {
+        try {
+            SymbolReference<ResolvedMethodDeclaration> methodRef =
+                    symbolResolver.resolveDeclaration(methodCall, ResolvedMethodDeclaration.class);
+
+            if (methodRef.isSolved()) {
+                ResolvedMethodDeclaration methodDecl = methodRef.getCorrespondingDeclaration();
+                ResolvedReferenceTypeDeclaration declaringClass = methodDecl.declaringType();
+                return Optional.of(declaringClass.getQualifiedName() + "." + methodDecl.getName());
+            }
+        } catch (Exception e) {
+            System.err.println("Could not resolve method: " + methodCall.getNameAsString());
+        }
+        return Optional.empty();
+    }*/
+
+    /**
+     * Updates calledBy relationships in MongoDB.
+     */
+    private void updateCalledByRelationships() {
+        List<JavaClass> allClasses = retrieve.findAllClasses();
+        for (JavaClass javaClass : allClasses) {
+            for (JavaMethod method : javaClass.getMethods()) {
+                String methodSignature = javaClass.getClassName() + "." + method.getMethodName();
+                Set<String> incomingCalls = getIncomingMethodCalls(methodSignature);
+                method.setCalledBy(new ArrayList<>(incomingCalls));
+            }
+            storage.saveClass(javaClass);
+        }
+    }
+
+    /**
+     * Retrieves all methods that invoke a given method.
+     */
+    public Set<String> getIncomingMethodCalls(String fullyQualifiedMethodName) {
+        return methodCallMap.entrySet().stream()
+                .filter(entry -> entry.getValue().contains(fullyQualifiedMethodName))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+    }
 }

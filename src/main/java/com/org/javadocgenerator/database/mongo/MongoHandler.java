@@ -75,6 +75,10 @@ public class MongoHandler implements JavaDocStorage, JavaDocRetrieve {
         JavaClass javaClass = classRepository.findByPackageNameAndClassName(packageName, className);
         return javaClass != null ? javaClass : null;
     }
+    @Override
+    public List<JavaClass> findAllClasses(){
+        return classRepository.findAll();
+    }
 
 
 }
