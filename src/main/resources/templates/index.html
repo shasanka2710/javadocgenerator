@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{base.html}">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{base.html}">
 <head>
     <title>Package Overview</title>
 </head>
@@ -10,13 +12,13 @@
         <thead>
         <tr>
             <th>Package Name</th>
-            <th>Description</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="package : ${packages}">
-            <td><a th:href="@{'/docs/package/' + ${package.name}}" th:text="${package.name}"></a></td>
-            <td th:text="${package.description}"></td>
+            <td>
+                <a th:href="@{'/api/javadoc/package/' + ${package.packageName}}" th:text="${package.packageName}"></a>
+            </td>
         </tr>
         </tbody>
     </table>

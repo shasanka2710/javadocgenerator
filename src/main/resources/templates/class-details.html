@@ -1,68 +1,130 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{base.html}">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{base.html}">
 <head>
+    <title th:text="${className} + ' - Class Details'"></title>
     <link rel="stylesheet" href="/css/styles.css">
-
 </head>
-<body data-page="class-details">
+<body>
 <div layout:fragment="content">
-    <!-- Title and Description -->
     <div class="mb-4">
-        <h2 class="text-primary" th:text="${title}"></h2>
-        <p class="text-muted" th:text="${description}"></p>
+        <h2 class="text-primary" th:text="${className}"></h2>
+        <p class="text-muted">Package: <span th:text="${packageName}"></span></p>
     </div>
 
     <!-- Fields Section -->
     <div>
-        <div class="section-header">
-            <h3>Fields</h3>
+        <h3>Fields</h3>
+        <div th:if="${fields == null or fields.isEmpty()}">
+            <p class="text-muted">No fields available</p>
         </div>
-        <div th:each="field : ${fields}" class="card">
-            <p class="card-text" th:text="${field}"></p>
-        </div>
+        <ul th:if="${fields != null and not #lists.isEmpty(fields)}">
+            <li th:each="field : ${fields}" th:text="${field}"></li>
+        </ul>
     </div>
-
-    <!-- Separator -->
-    <hr>
 
     <!-- Constructors Section -->
     <div>
-        <div class="section-header">
-            <h3>Constructors</h3>
+        <h3>Constructors</h3>
+        <div th:if="${constructors == null or constructors.isEmpty()}">
+            <p class="text-muted">No constructors available</p>
         </div>
-        <div th:each="constructor : ${constructors}" class="card">
-            <p class="card-text" th:text="${constructor}"></p>
-        </div>
+        <ul th:if="${constructors != null and not #lists.isEmpty(constructors)}">
+            <li th:each="constructor : ${constructors}" th:text="${constructor}"></li>
+        </ul>
     </div>
-
-    <!-- Separator -->
-    <hr>
 
     <!-- Methods Section -->
     <div>
-        <div class="section-header">
-            <h3>Methods</h3>
+        <h3>Methods</h3>
+        <div th:if="${methods == null or methods.isEmpty()}">
+            <p class="text-muted">No methods available</p>
         </div>
+
         <div th:each="method : ${methods}" class="card">
-            <h5 class="card-title" th:text="${method.signature}"></h5>
-            <p class="card-text ai-style-change-1" th:text="${method.description}"></p>
-            <p class="key-value" th:text="'Return Type: ' + ${method.returnType}"></p>
-            <p class="key-value" th:if="${method.exceptions}" th:text="'Exceptions: ' + ${method.exceptions}"></p>
+            <div class="card-body">
+                <!-- Method Signature -->
+                <h5 class="card-title">
+                    <span th:text="${method.visibility}"></span>
+                    <span th:if="${method.isStatic}" class="modifier">static</span>
+                    <span th:if="${method.isFinal}" class="modifier">final</span>
+                    <span th:text="${method.returnType}"></span>
+                    <strong th:text="${method.methodName}"></strong>
+                    (
+                    <span th:each="param, iterStat : ${method.parameters}">
+                        <span th:text="${param.type} + ' ' + ${param.name}"></span>
+                        <span th:if="${!iterStat.last}">, </span>
+                    </span>
+                    )
+                </h5>
+
+                <!-- Annotations -->
+                <div>
+                    <h6>Annotations</h6>
+                    <div th:if="${method.annotations == null or method.annotations.isEmpty()}">
+                        <p class="text-muted">No annotations available</p>
+                    </div>
+                    <ul th:if="${method.annotations != null and not #lists.isEmpty(method.annotations)}">
+                        <li th:each="annotation : ${method.annotations}" th:text="'@' + ${annotation}"></li>
+                    </ul>
+                </div>
+
+                <!-- Throws Exceptions -->
+                <div>
+                    <h6>Throws</h6>
+                    <div th:if="${method.throwsExceptions == null or method.throwsExceptions.isEmpty()}">
+                        <p class="text-muted">No exceptions thrown</p>
+                    </div>
+                    <ul th:if="${method.throwsExceptions != null and not #lists.isEmpty(method.throwsExceptions)}">
+                        <li th:each="exception : ${method.throwsExceptions}" th:text="${exception}"></li>
+                    </ul>
+                </div>
+
+                <!-- Javadoc -->
+                <div>
+                    <h6>Javadoc</h6>
+                    <div th:if="${method.javadoc == null or method.javadoc.isEmpty()}">
+                        <p class="text-muted">No Javadoc available</p>
+                    </div>
+                    <pre class="javadoc-block" th:if="${method.javadoc}" th:text="${method.javadoc}"></pre>
+                </div>
+
+                <!-- Comments -->
+                <div>
+                    <h6>Comments</h6>
+                    <div th:if="${method.comments == null or method.comments.isEmpty()}">
+                        <p class="text-muted">No comments available</p>
+                    </div>
+                    <pre class="comment-block" th:if="${method.comments}">
+                        <span th:each="comment : ${method.comments}" th:text="${comment} + '\n'"></span>
+                    </pre>
+                </div>
+
+                <!-- Calls (Methods this method calls) -->
+                <div>
+                    <h6>Calls</h6>
+                    <div th:if="${method.calls == null or method.calls.isEmpty()}">
+                        <p class="text-muted">No method calls</p>
+                    </div>
+                    <ul th:if="${method.calls != null and not #lists.isEmpty(method.calls)}">
+                        <li th:each="call : ${method.calls}" th:text="${call}"></li>
+                    </ul>
+                </div>
+
+                <!-- Called By (Methods that call this method) -->
+                <div>
+                    <h6>Called By</h6>
+                    <div th:if="${method.calledBy == null or method.calledBy.isEmpty()}">
+                        <p class="text-muted">No callers available</p>
+                    </div>
+                    <ul th:if="${method.calledBy != null and not #lists.isEmpty(method.calledBy)}">
+                        <li th:each="caller : ${method.calledBy}" th:text="${caller}"></li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-<script>
-    const textContent = $0.textContent;
-    const lines = textContent.split('\n').filter(line => line.trim() !== '');
-    const headings = lines.filter(line => line.trim().startsWith('**') || line.trim().endsWith(':'));
-    const formattedContent = lines.map(line => {
-      if (headings.includes(line)) {
-        return `<li class="heading">${line}</li>`;
-      } else {
-        return `<li>${line}</li>`;
-      }
-    }).join('');
-    $0.innerHTML = `<ul>${formattedContent}</ul>`;
-</script>
 </body>
 </html>

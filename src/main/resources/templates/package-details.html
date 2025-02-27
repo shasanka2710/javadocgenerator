@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{base.html}">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{base.html}">
 <head>
+    <title>Package Details</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
 <div layout:fragment="content">
-    <!-- Title and Description -->
     <div class="mb-4">
-        <h2 class="text-primary" th:text="${title}"></h2>
-        <p class="text-muted" th:text="${description}"></p>
+        <h2 class="text-primary" th:text="${packageName}"></h2>
     </div>
 
-    <!-- Table Section -->
     <div class="table-container">
         <div class="section-header">
             <h3>Classes</h3>
@@ -20,15 +20,13 @@
             <thead>
             <tr>
                 <th>Class Name</th>
-                <th>Description</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="class : ${classes}">
                 <td>
-                    <a th:href="@{'/docs/package/' + ${packagePath} + '/class/' + ${class.name}}" th:text="${class.name}"></a>
+                    <a th:href="@{'/api/javadoc/package/' + ${packageName} + '/class/' + ${class.className}}" th:text="${class.className}"></a>
                 </td>
-                <td th:text="${class.description}"></td>
             </tr>
             </tbody>
         </table>
