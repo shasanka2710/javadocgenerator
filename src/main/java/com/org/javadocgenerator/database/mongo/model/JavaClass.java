@@ -23,5 +23,8 @@ public class JavaClass {
     private List<String> annotations;
     private String javadoc;
     private List<String> comments;
-    private List<String> methods;
+    private List<JavaField> fields;
+    private List<JavaConstructor> constructors;
+    private List<JavaMethod> methods;
+    private String staticBlocks;
 }

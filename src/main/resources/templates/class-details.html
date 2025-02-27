@@ -52,8 +52,8 @@
                     <span th:text="${method.returnType}"></span>
                     <strong th:text="${method.methodName}"></strong>
                     (
-                    <span th:each="param, iterStat : ${method.parameters}">
-                        <span th:text="${param.type} + ' ' + ${param.name}"></span>
+                    <span th:each="parameter, iterStat : ${method.parameters}">
+                        <span th:text="${parameter.type} + ' ' + ${parameter.name}"></span>
                         <span th:if="${!iterStat.last}">, </span>
                     </span>
                     )

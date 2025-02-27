@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface MongoJavaClassRepository extends MongoRepository<JavaClass, String> {
     List<JavaClass> findByPackageName(String packageName);
+
+    JavaClass findByPackageNameAndClassName(String packageName, String className);
 }
