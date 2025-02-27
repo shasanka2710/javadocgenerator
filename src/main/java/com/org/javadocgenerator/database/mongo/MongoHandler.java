@@ -24,13 +24,11 @@ public class MongoHandler implements JavaDocStorage, JavaDocRetrieve {
     private final MongoProjectRepository projectRepository;
     private final MongoJavaPackageRepository packageRepository;
     private final MongoJavaClassRepository classRepository;
-    private final MongoJavaMethodRepository methodRepository;
 
-    public MongoHandler(MongoProjectRepository projectRepository, MongoJavaPackageRepository packageRepository, MongoJavaClassRepository classRepository, MongoJavaMethodRepository methodRepository) {
+    public MongoHandler(MongoProjectRepository projectRepository, MongoJavaPackageRepository packageRepository, MongoJavaClassRepository classRepository) {
         this.projectRepository = projectRepository;
         this.packageRepository = packageRepository;
         this.classRepository = classRepository;
-        this.methodRepository = methodRepository;
     }
 
     @Override
