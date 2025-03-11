@@ -58,6 +58,20 @@ public class MongoHandler implements JavaDocStorage, JavaDocRetrieve {
         // Insert the new class with updated details
         mongoTemplate.save(javaClass);
     }
+    @Override
+    public void updateCalledBy(String methodName, List<String> calledByMethods) {
+        Query query = new Query(Criteria.where("methods.methodName").is(methodName));
+        JavaClass javaClass = mongoTemplate.findOne(query, JavaClass.class);
+
+        if (javaClass != null) {
+            for (JavaMethod method : javaClass.getMethods()) {
+                if (method.getMethodName().equals(methodName)) {
+                    method.setCalledBy(calledByMethods);
+                }
+            }
+            mongoTemplate.save(javaClass);
+        }
+    }
 
 
     @Override

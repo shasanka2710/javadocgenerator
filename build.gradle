@@ -51,9 +51,14 @@ dependencies {
 
 	// H2 Database
 	runtimeOnly 'com.h2database:h2'
+	//java parser
+	implementation 'com.github.javaparser:javaparser-core:3.26.3'
+	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.26.3'
 
-	implementation 'com.github.javaparser:javaparser-core:3.25.5'
-	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.5'
+	//spoon parser
+	// https://mvnrepository.com/artifact/fr.inria.gforge.spoon/spoon-core
+	implementation group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '11.2.0'
+
 	implementation 'org.eclipse.jgit:org.eclipse.jgit:7.1.0.202411261347-r'
 	implementation 'org.slf4j:slf4j-api:2.0.7'
 	implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect:3.2.0'

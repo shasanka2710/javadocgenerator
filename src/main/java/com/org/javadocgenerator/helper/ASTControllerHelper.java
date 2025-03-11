@@ -2,6 +2,7 @@ package com.org.javadocgenerator.helper;
 
 
 import com.org.javadocgenerator.service.JavaDocGeneratorService;
+import com.org.javadocgenerator.service.JavaDocGeneratorServiceSpoon;
 import com.org.javadocgenerator.service.JavaDocRetrieveService;
 import com.org.javadocgenerator.database.mongo.model.JavaClass;
 import com.org.javadocgenerator.database.mongo.model.JavaMethod;
@@ -14,6 +15,7 @@ import java.util.List;
 @Component
 public class ASTControllerHelper {
     private final JavaDocGeneratorService generatorService;
+    //private final JavaDocGeneratorServiceSpoon generatorService;
     private final JavaDocRetrieveService retrieveService;
 
     public ASTControllerHelper(JavaDocGeneratorService generatorService, JavaDocRetrieveService retrieveService) {

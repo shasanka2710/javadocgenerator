@@ -12,12 +12,13 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.comments.JavadocComment;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.resolution.SymbolResolver;
+import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
-
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
-import com.github.javaparser.resolution.SymbolResolver;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +37,8 @@ public class JavaDocGeneratorService {
     private final Map<String, Set<String>> incomingCallMap = new HashMap<>(); // Stores calledBy
     private SymbolResolver symbolResolver;
 
-    public JavaDocGeneratorService(@Qualifier("mongoHandler") JavaDocStorage storage,@Qualifier("mongoHandler") JavaDocRetrieve retrieve) {
+    public JavaDocGeneratorService(@Qualifier("mongoHandler") JavaDocStorage storage,
+                                   @Qualifier("mongoHandler") JavaDocRetrieve retrieve) {
         this.storage = storage;
         this.retrieve = retrieve;
         this.symbolResolver = createSymbolSolver();
@@ -61,7 +63,7 @@ public class JavaDocGeneratorService {
         project.setId(projectId);
         project.setName(new File(projectPath).getName());
         project.setRepoPath(projectPath);
-        storage.saveProject(project); // Save project
+        storage.saveProject(project); // Save project metadata
 
         Files.walk(Paths.get(projectPath))
                 .filter(Files::isRegularFile)
@@ -77,7 +79,7 @@ public class JavaDocGeneratorService {
                     }
                 });
 
-        // Update calledBy relationships
+        // Update calledBy relationships after all classes are processed
         updateCalledByRelationships();
 
         uniquePackages.clear(); // Clear cache after processing
@@ -148,8 +150,7 @@ public class JavaDocGeneratorService {
         Set<String> calledMethods = new HashSet<>();
 
         for (MethodCallExpr methodCall : methodDecl.findAll(MethodCallExpr.class)) {
-            //resolveFullyQualifiedMethodName(methodCall).ifPresent(calledMethods::add);
-            calledMethods.add(methodCall.getNameAsString());
+            resolveFullyQualifiedMethodName(methodCall).ifPresent(calledMethods::add);
         }
         return calledMethods;
     }
@@ -157,21 +158,16 @@ public class JavaDocGeneratorService {
     /**
      * Resolves the fully qualified method name for a method call.
      */
-   /* private Optional<String> resolveFullyQualifiedMethodName(MethodCallExpr methodCall) {
+    private Optional<String> resolveFullyQualifiedMethodName(MethodCallExpr methodCall) {
         try {
-            SymbolReference<ResolvedMethodDeclaration> methodRef =
-                    symbolResolver.resolveDeclaration(methodCall, ResolvedMethodDeclaration.class);
-
-            if (methodRef.isSolved()) {
-                ResolvedMethodDeclaration methodDecl = methodRef.getCorrespondingDeclaration();
-                ResolvedReferenceTypeDeclaration declaringClass = methodDecl.declaringType();
-                return Optional.of(declaringClass.getQualifiedName() + "." + methodDecl.getName());
-            }
+            ResolvedMethodDeclaration methodDecl = symbolResolver.resolveDeclaration(methodCall, ResolvedMethodDeclaration.class);
+            ResolvedReferenceTypeDeclaration declaringClass = methodDecl.declaringType();
+            return Optional.of(declaringClass.getQualifiedName() + "." + methodDecl.getName());
         } catch (Exception e) {
             System.err.println("Could not resolve method: " + methodCall.getNameAsString());
         }
         return Optional.empty();
-    }*/
+    }
 
     /**
      * Updates calledBy relationships in MongoDB.
@@ -180,8 +176,8 @@ public class JavaDocGeneratorService {
         List<JavaClass> allClasses = retrieve.findAllClasses();
         for (JavaClass javaClass : allClasses) {
             for (JavaMethod method : javaClass.getMethods()) {
-                String methodSignature = javaClass.getClassName() + "." + method.getMethodName();
-                Set<String> incomingCalls = getIncomingMethodCalls(methodSignature);
+                String methodSignature = javaClass.getPackageName() + "." + javaClass.getClassName() + "." + method.getMethodName();
+                Set<String> incomingCalls = incomingCallMap.getOrDefault(methodSignature, Collections.emptySet());
                 method.setCalledBy(new ArrayList<>(incomingCalls));
             }
             storage.saveClass(javaClass);
@@ -192,9 +188,8 @@ public class JavaDocGeneratorService {
      * Retrieves all methods that invoke a given method.
      */
     public Set<String> getIncomingMethodCalls(String fullyQualifiedMethodName) {
-        return methodCallMap.entrySet().stream()
-                .filter(entry -> entry.getValue().contains(fullyQualifiedMethodName))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
+        return incomingCallMap.getOrDefault(fullyQualifiedMethodName, Collections.emptySet());
     }
 }
+
+
